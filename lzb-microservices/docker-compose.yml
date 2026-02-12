@@ -1,0 +1,168 @@
+version: '3.8'
+
+services:
+  # Nacos - 服务注册发现和配置中心
+  nacos:
+    image: nacos/nacos-server:v2.3.0
+    container_name: lzb-nacos
+    environment:
+      - MODE=standalone
+      - PREFER_HOST_MODE=hostname
+      - JVM_XMS=512m
+      - JVM_XMX=512m
+      - SPRING_DATASOURCE_PLATFORM=mysql
+      - MYSQL_SERVICE_HOST=mysql
+      - MYSQL_SERVICE_DB_NAME=nacos
+      - MYSQL_SERVICE_PORT=3306
+      - MYSQL_SERVICE_USER=root
+      - MYSQL_SERVICE_PASSWORD=root123
+      - MYSQL_SERVICE_DB_PARAM=characterEncoding=utf8&connectTimeout=10000&socketTimeout=30000&autoReconnect=true&useSSL=false&allowPublicKeyRetrieval=true
+      - NACOS_AUTH_ENABLE=false
+    ports:
+      - "8848:8848"
+      - "9848:9848"
+    networks:
+      - lzb-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 1 bash -c 'cat < /dev/null > /dev/tcp/localhost/8848' || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 90s
+
+  # MySQL - 数据库
+  mysql:
+    image: mysql:8.0
+    container_name: lzb-mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root123
+      - MYSQL_DATABASE=lzb_microservices
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./init-db:/docker-entrypoint-initdb.d:ro
+      - mysql-data:/var/lib/mysql
+    networks:
+      - lzb-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot123"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  # Redis - 缓存和Token存储
+  redis:
+    image: redis:7-alpine
+    container_name: lzb-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - lzb-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # OpenLDAP - LDAP服务器
+  openldap:
+    build:
+      context: .
+      dockerfile: openldap/Dockerfile
+    container_name: lzb-openldap
+    environment:
+      - LDAP_ORGANISATION=LZB
+      - LDAP_DOMAIN=lzb.com
+      - LDAP_ADMIN_PASSWORD=admin
+    ports:
+      - "389:389"
+    volumes:
+      - ldap-data:/var/lib/ldap
+      - ldap-config:/etc/ldap/slapd.d
+    networks:
+      - lzb-network
+    healthcheck:
+      test: ["CMD", "ldapsearch", "-x", "-H", "ldap://localhost", "-b", "dc=lzb,dc=com", "-D", "cn=admin,dc=lzb,dc=com", "-w", "admin"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Gateway - API网关
+  lzb-gateway:
+    build:
+      context: ./lzb-gateway
+      dockerfile: Dockerfile
+    container_name: lzb-gateway
+    ports:
+      - "7573:7573"
+    networks:
+      - lzb-network
+    depends_on:
+      nacos:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7573/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # UAA - 认证服务
+  lzb-uaa:
+    build:
+      context: ./lzb-uaa
+      dockerfile: Dockerfile
+    container_name: lzb-uaa
+    networks:
+      - lzb-network
+    depends_on:
+      nacos:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      openldap:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9999/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Product - 产品服务
+  lzb-product:
+    build:
+      context: ./lzb-product
+      dockerfile: Dockerfile
+    container_name: lzb-product
+    networks:
+      - lzb-network
+    depends_on:
+      nacos:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8081/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+networks:
+  lzb-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  ldap-data:
+  ldap-config:

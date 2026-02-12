@@ -1,0 +1,23 @@
+# Bootstrap 配置 - 在 application.yml 之前加载
+# 用于确保 Nacos 配置在应用启动前就被加载
+
+spring:
+  application:
+    name: lzb-uaa
+  profiles:
+    active: docker
+  cloud:
+    nacos:
+      config:
+        server-addr: ${NACOS_SERVER_ADDR:nacos:8848}
+        namespace: 
+        group: DEFAULT_GROUP
+        file-extension: yml
+        refresh-enabled: true
+        # 导入 Nacos 配置
+        import-check:
+          enabled: false
+        extension-configs:
+          - data-id: lzb-uaa-${spring.profiles.active}.yml
+            group: DEFAULT_GROUP
+            refresh: true

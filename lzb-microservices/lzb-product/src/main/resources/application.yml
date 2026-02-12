@@ -1,0 +1,60 @@
+# Product 产品服务配置
+# Docker 环境默认配置
+
+spring:
+  application:
+    name: lzb-product
+  profiles:
+    active: docker
+  cloud:
+    nacos:
+      discovery:
+        server-addr: nacos:8848
+        namespace: 
+        group: DEFAULT_GROUP
+      config:
+        server-addr: nacos:8848
+        namespace: 
+        group: DEFAULT_GROUP
+        file-extension: yml
+        refresh-enabled: true
+        import-check:
+          enabled: false
+        # Nacos 配置变为可选，不存在也不影响启动
+        shared-configs:
+          - data-id: common-config.yml
+            group: DEFAULT_GROUP
+            refresh: true
+        extension-configs:
+          - data-id: lzb-product-${spring.profiles.active}.yml
+            group: DEFAULT_GROUP
+            refresh: true
+  # 数据库配置（Docker 容器名）
+  datasource:
+    url: jdbc:mysql://mysql:3306/lzb_microservices?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: root123
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+server:
+  port: 8081
+
+mybatis-flex:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    logic-delete-column: deleted
+    logic-delete-value: 1
+    logic-normal-value: 0
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    com.lzb.product: INFO
+    org.springframework: INFO

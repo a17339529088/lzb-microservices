@@ -1,0 +1,96 @@
+# UAA 认证服务配置
+# Docker 环境默认配置
+
+spring:
+  application:
+    name: lzb-uaa
+  profiles:
+    active: docker
+  config:
+    import:
+      - optional:nacos:lzb-uaa-docker.yml?group=DEFAULT_GROUP&refreshEnabled=true
+  cloud:
+    nacos:
+      discovery:
+        server-addr: nacos:8848
+        namespace: 
+        group: DEFAULT_GROUP
+      config:
+        server-addr: nacos:8848
+        namespace: 
+        group: DEFAULT_GROUP
+        file-extension: yml
+        refresh-enabled: true
+        import-check:
+          enabled: false
+        # Nacos 配置变为可选，不存在也不影响启动
+        shared-configs:
+          - data-id: common-config.yml
+            group: DEFAULT_GROUP
+            refresh: true
+        extension-configs:
+          - data-id: lzb-uaa-${spring.profiles.active}.yml
+            group: DEFAULT_GROUP
+            refresh: true
+  # 数据库配置（Docker 容器名）
+  datasource:
+    url: jdbc:mysql://mysql:3306/lzb_microservices?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: root123
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: redis
+      port: 6379
+      database: 0
+  # GitHub OAuth2 配置（从 Nacos 读取）
+  # 默认值为占位符，Nacos 配置会覆盖
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: your-github-client-id
+            client-secret: your-github-client-secret
+            scope: read:user,user:email
+        provider:
+          github:
+            authorization-uri: https://github.com/login/oauth/authorize
+            token-uri: https://github.com/login/oauth/access_token
+            user-info-uri: https://api.github.com/user
+            user-name-attribute: login
+
+# LDAP 配置（Docker 容器名）
+ldap:
+  url: ldap://openldap:389
+  base: dc=lzb,dc=com
+  userDn: cn=admin,dc=lzb,dc=com
+  password: admin
+
+# JWT 配置
+jwt:
+  secret: lzb-microservices-jwt-secret-key-2024-very-long-and-secure
+  expiration: 10800
+
+server:
+  port: 9999
+
+mybatis-flex:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    logic-delete-column: deleted
+    logic-delete-value: 1
+    logic-normal-value: 0
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    com.lzb.uaa: DEBUG
+    org.springframework.security: DEBUG

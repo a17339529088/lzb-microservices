@@ -1,0 +1,78 @@
+# Gateway 网关服务配置
+# Docker 环境默认配置
+
+spring:
+  application:
+    name: lzb-gateway
+  profiles:
+    active: docker
+  cloud:
+    nacos:
+      discovery:
+        server-addr: nacos:8848
+        namespace: 
+        group: DEFAULT_GROUP
+      config:
+        server-addr: nacos:8848
+        namespace: 
+        group: DEFAULT_GROUP
+        file-extension: yml
+        refresh-enabled: true
+        import-check:
+          enabled: false
+        # Nacos 配置变为可选，不存在也不影响启动
+        shared-configs:
+          - data-id: common-config.yml
+            group: DEFAULT_GROUP
+            refresh: true
+        extension-configs:
+          - data-id: lzb-gateway-${spring.profiles.active}.yml
+            group: DEFAULT_GROUP
+            refresh: true
+    gateway:
+      routes:
+        # OAuth2 authorization endpoint (must be before uaa-service route)
+        - id: oauth2-authorization
+          uri: lb://lzb-uaa
+          predicates:
+            - Path=/oauth2/**
+          order: 1
+        # OAuth2 callback endpoint (must be before uaa-service route)
+        - id: oauth2-callback
+          uri: lb://lzb-uaa
+          predicates:
+            - Path=/login/oauth2/**
+          order: 2
+        # UAA service routes
+        - id: uaa-service
+          uri: lb://lzb-uaa
+          predicates:
+            - Path=/uaa/**
+          order: 3
+        - id: product-service
+          uri: lb://lzb-product
+          predicates:
+            - Path=/api/products/**
+  data:
+    redis:
+      host: redis
+      port: 6379
+      database: 0
+
+# JWT 配置
+jwt:
+  secret: lzb-microservices-jwt-secret-key-2024-very-long-and-secure
+
+server:
+  port: 7573
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+
+logging:
+  level:
+    com.lzb.gateway: INFO
+    org.springframework: INFO

@@ -1,0 +1,60 @@
+# 组织单元: users
+dn: ou=users,dc=lzb,dc=com
+objectClass: organizationalUnit
+ou: users
+
+# 组织单元: groups
+dn: ou=groups,dc=lzb,dc=com
+objectClass: organizationalUnit
+ou: groups
+
+# 测试用户: ldap_user_1 (USER角色) - 必须在 group 之前定义
+dn: cn=ldap_user_1,ou=users,dc=lzb,dc=com
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+objectClass: top
+cn: ldap_user_1
+sn: User1
+uid: ldap_user_1
+userPassword: ldap_user_1
+
+# 测试用户: ldap_editor_1 (EDITOR角色)
+dn: cn=ldap_editor_1,ou=users,dc=lzb,dc=com
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+objectClass: top
+cn: ldap_editor_1
+sn: Editor1
+uid: ldap_editor_1
+userPassword: ldap_editor_1
+
+# 测试用户: ldap_adm_1 (PRODUCT_ADMIN角色)
+dn: cn=ldap_adm_1,ou=users,dc=lzb,dc=com
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+objectClass: top
+cn: ldap_adm_1
+sn: Admin1
+uid: ldap_adm_1
+userPassword: ldap_adm_1
+
+# 用户组: users - 现在用户已经存在了
+dn: cn=users,ou=groups,dc=lzb,dc=com
+objectClass: groupOfNames
+cn: users
+member: cn=ldap_user_1,ou=users,dc=lzb,dc=com
+
+# 用户组: editors
+dn: cn=editors,ou=groups,dc=lzb,dc=com
+objectClass: groupOfNames
+cn: editors
+member: cn=ldap_editor_1,ou=users,dc=lzb,dc=com
+
+# 用户组: admins
+dn: cn=admins,ou=groups,dc=lzb,dc=com
+objectClass: groupOfNames
+cn: admins
+member: cn=ldap_adm_1,ou=users,dc=lzb,dc=com
